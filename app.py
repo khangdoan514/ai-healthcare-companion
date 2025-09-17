@@ -2,6 +2,7 @@ import streamlit as st
 import pubchempy as pcp
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit.Chem import rdmolfiles
 from medication_dictionary import medication_dictionary
 import py3Dmol
 
@@ -25,14 +26,19 @@ def fetch_chemical_info(drug_name):
     return None
 
 # -------------------------
-# Render 3D chemical structure
+# Render floating 2D molecule (Big Hero 6 style)
 # -------------------------
-def show_3d_structure(mol):
-    from rdkit.Chem import rdmolfiles
+def show_floating_2d_molecule(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    AllChem.Compute2DCoords(mol)  # generate 2D coordinates
     mol_block = rdmolfiles.MolToMolBlock(mol)
+    
     view = py3Dmol.view(width=400, height=400)
     view.addModel(mol_block, 'mol')
-    view.setStyle({'stick': {}})
+    view.setStyle({'stick': {'colorscheme': 'cyanCarbon'}})  # neon color
+    view.setBackgroundColor('0x000000')  # black background
+    view.rotate(30, 'x')  # slight tilt for floating effect
+    view.rotate(15, 'y')
     view.zoomTo()
     html = view._make_html()
     st.components.v1.html(html, height=450, width=450)
@@ -65,15 +71,11 @@ if symptom:
                 st.write("**Molecular Formula:**", info['molecular_formula'])
                 st.write("**Molecular Weight:**", info['molecular_weight'])
                 
-                # 3D Structure
+                # Floating 2D molecule
                 try:
-                    mol = Chem.MolFromSmiles(info['smiles'])
-                    mol = Chem.AddHs(mol)
-                    AllChem.EmbedMolecule(mol)
-                    AllChem.UFFOptimizeMolecule(mol)
-                    show_3d_structure(mol)
+                    show_floating_2d_molecule(info['smiles'])
                 except:
-                    st.write("Could not render 3D structure.")
+                    st.write("Could not render molecule.")
             else:
                 st.write("Chemical info not found.")
     else:
