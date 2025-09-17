@@ -1,8 +1,9 @@
 import streamlit as st
 import pubchempy as pcp
 from rdkit import Chem
-from rdkit.Chem import Draw
+from rdkit.Chem import AllChem
 from medication_dictionary import medication_dictionary
+import py3Dmol
 
 st.set_page_config(page_title="AI Healthcare Companion", layout="centered")
 st.title("🩺 AI Healthcare Companion")
@@ -22,6 +23,19 @@ def fetch_chemical_info(drug_name):
         }
         return info
     return None
+
+# -------------------------
+# Render 3D chemical structure
+# -------------------------
+def show_3d_structure(mol):
+    from rdkit.Chem import rdmolfiles
+    mol_block = rdmolfiles.MolToMolBlock(mol)
+    view = py3Dmol.view(width=400, height=400)
+    view.addModel(mol_block, 'mol')
+    view.setStyle({'stick': {}})
+    view.zoomTo()
+    html = view._make_html()
+    st.components.v1.html(html, height=450, width=450)
 
 # -------------------------
 # Streamlit GUI
@@ -51,13 +65,15 @@ if symptom:
                 st.write("**Molecular Formula:**", info['molecular_formula'])
                 st.write("**Molecular Weight:**", info['molecular_weight'])
                 
-                # Render 2D structure
+                # 3D Structure
                 try:
                     mol = Chem.MolFromSmiles(info['smiles'])
-                    img = Draw.MolToImage(mol)
-                    st.image(img, caption=f"2D structure of {drug['name']}")
+                    mol = Chem.AddHs(mol)
+                    AllChem.EmbedMolecule(mol)
+                    AllChem.UFFOptimizeMolecule(mol)
+                    show_3d_structure(mol)
                 except:
-                    st.write("Could not render chemical structure.")
+                    st.write("Could not render 3D structure.")
             else:
                 st.write("Chemical info not found.")
     else:
