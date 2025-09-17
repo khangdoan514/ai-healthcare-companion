@@ -2,47 +2,34 @@ import streamlit as st
 import pubchempy as pcp
 from rdkit import Chem
 from rdkit.Chem import Draw
-from PIL import Image
-import io
-import base64
-import json
 
-st.set_page_config(page_title="AI Healthcare Companion", layout="centered")
-st.title("AI Healthcare Companion 🩺")
+from medication_dictionary import medication_dictionary
 
-# ---------- Symptom → Medicine Mapping ----------
-# You can expand this JSON later or move to SQLite
-symptom_to_meds = {
-    "headache": {"name": "ibuprofen", "dosage": "200-400 mg every 4-6 hours"},
-    "fever": {"name": "acetaminophen", "dosage": "500-1000 mg every 4-6 hours"},
-    "cough": {"name": "dextromethorphan", "dosage": "10-20 mg every 4 hours"}
-}
+st.title("AI Healthcare Companion")
 
-# ---------- User Input ----------
+# User input
 symptom = st.text_input("Enter your symptom:")
 
 if symptom:
-    med_info = symptom_to_meds.get(symptom.lower())
-    if med_info:
-        med_name = med_info["name"]
-        st.subheader(f"Suggested Medicine: {med_name}")
-        st.write(f"Recommended dosage: {med_info['dosage']}")
+    drugs = medication_dictionary.get(symptom.lower())
+    if drugs:
+        st.write(f"Possible medications for '{symptom}':")
+        for drug in drugs:
+            st.write(f"- {drug['name']}: {drug['dosage']}")
 
-        # ---------- Fetch Chemical Info from PubChem ----------
-        compounds = pcp.get_compounds(med_name, 'name')
-        if compounds:
-            c = compounds[0]
-            st.write("**IUPAC Name:**", c.iupac_name)
-            st.write("**Molecular Formula:**", c.molecular_formula)
-            st.write("**Molecular Weight:**", round(c.molecular_weight, 2))
+            # Fetch chemical info
+            compounds = pcp.get_compounds(drug['name'], 'name')
+            if compounds:
+                c = compounds[0]
+                st.write("IUPAC Name:", c.iupac_name)
+                st.write("Molecular Formula:", c.molecular_formula)
+                st.write("Molecular Weight:", c.molecular_weight)
 
-            # ---------- Render 2D Structure Using RDKit ----------
-            mol = Chem.MolFromSmiles(c.isomeric_smiles)
-            if mol:
-                img = Draw.MolToImage(mol, size=(300, 300))
-                st.image(img, caption=f"2D structure of {med_name}")
-
-        else:
-            st.write("No chemical data found in PubChem.")
+                # Render 2D structure
+                mol = Chem.MolFromSmiles(c.isomeric_smiles)
+                img = Draw.MolToImage(mol)
+                st.image(img, caption=f"2D structure of {drug['name']}")
+            else:
+                st.write("No chemical data found.")
     else:
-        st.warning("No suggestion available for this symptom. Try another one!")
+        st.write("No medication found for this symptom.")
